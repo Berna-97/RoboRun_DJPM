@@ -1,62 +1,75 @@
 package game.roborun
 
+import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.RectF
 import android.util.Log
-import android.view.KeyEvent
 
-class Player(originalBitmap: Bitmap, private var x: Int, private var y: Int, private val enemy: Enemy) {
+class Player() {
 
-    private val gravity = 2
+    private val gravity = 3
     private var yVelocity = 2
-    private var groundLevel = 100
+    private var groundLevel = 1350
     private var canJump = true
 
-    private var scale = 0.3f  // Ajuste a escala conforme necessário
+    private var baseScale = 7.0f
 
-    private val bitmap: Bitmap
+
+    var x = 0f
+    var y = 0f
+    var dX = 0
+    var dY = 0
+
+    lateinit var playerBitmap: Bitmap
+    lateinit var detectCollision: RectF
+
+    private val circleDim = 50f
+
+    var shouldBeRemoved = false
+
+    constructor(context: Context, width: Int, height: Int, x: Float, y: Float) : this() {
+        this.x = x
+        this.y = y
+
+        dY = height
+        dX = width
+
+        // Agora, o contexto está disponível para carregar o bitmap
+        playerBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.player)
+        playerBitmap = Bitmap.createScaledBitmap(playerBitmap, (circleDim * baseScale).toInt(), (circleDim * baseScale).toInt(), false)
+
+        detectCollision = RectF(x, y, playerBitmap.width.toFloat(), playerBitmap.height.toFloat())
+    }
 
     init {
-        // Obtém a largura e altura da imagem original do player
-        val width = (originalBitmap.width * scale).toInt()
-        val height = (originalBitmap.height * scale).toInt()
-
-        // Redimensiona a imagem do player
-        bitmap = Bitmap.createScaledBitmap(originalBitmap, width, height, true)
+        // Aqui, o contexto ainda não está disponível, então não podemos carregar o bitmap
     }
 
     fun draw(canvas: Canvas) {
-        canvas.drawBitmap(bitmap, x.toFloat(), y.toFloat(), null)
+        canvas.drawBitmap(playerBitmap, x, y, null)
     }
 
-    fun update(enemies: List<Enemy.EnemyInstance>) {
+    fun update() {
+        // Aplicar gravidade
         yVelocity += gravity
         y += yVelocity
-        groundLevel = 1360
 
-        // Verifica a colisão com o chão
-        if (y > groundLevel - bitmap.height) {
-            y = groundLevel - bitmap.height
+        // Verificar colisão com o chão
+        if (y > groundLevel - playerBitmap.height) {
+            y = (groundLevel - playerBitmap.height).toFloat()
             yVelocity = 0
             canJump = true  // Permite o jogador pular novamente quando atinge o chão
         }
-        for (enemyInstance in enemy.getEnemies()) {
-            if (x < enemyInstance.x + enemyInstance.width &&
-                x + bitmap.width > enemyInstance.x &&
-                y < enemyInstance.y + enemyInstance.height &&
-                y + bitmap.height > enemyInstance.y
-            ) {
-                Log.d("Player", "morreu")
-            }
-        }
-
     }
 
     fun jump() {
         if (canJump) {
-            yVelocity = -30
+            yVelocity = -50
             canJump = false
         }
-
     }
+
 }
+

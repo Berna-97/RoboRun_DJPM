@@ -11,8 +11,10 @@ class Background(private val context: Context, private val screenWidth: Int, pri
     private var x1 = 0
     private var x2 = screenWidth
     private val speed = 800
-    private val image: Bitmap = BitmapFactory.decodeResource(context.resources, R.drawable.background)
-    private val image2: Bitmap = BitmapFactory.decodeResource(context.resources, R.drawable.background2)
+    private val image: Bitmap =
+        BitmapFactory.decodeResource(context.resources, R.drawable.background)
+    private val image2: Bitmap =
+        BitmapFactory.decodeResource(context.resources, R.drawable.background2)
     private var distanceTraveled = 0
 
     fun update(dt: Float) {
@@ -28,6 +30,7 @@ class Background(private val context: Context, private val screenWidth: Int, pri
         }
 
         distanceTraveled += (speed * dt).toInt()
+        //usa isto para o score, i guess
     }
 
     fun draw(canvas: Canvas) {
@@ -37,9 +40,6 @@ class Background(private val context: Context, private val screenWidth: Int, pri
         val rect2 = Rect(x2, 0, x2 + image.width, screenHeight)
         canvas.drawBitmap(image, null, rect2, null)
     }
-
-    fun getDistance(): Int {
-        return distanceTraveled
-    }
 }
+
 

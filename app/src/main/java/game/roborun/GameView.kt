@@ -1,97 +1,121 @@
 package game.roborun
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
-import android.view.KeyEvent
+import android.graphics.Color
+import android.graphics.Paint
 import android.view.MotionEvent
 import android.view.SurfaceHolder
 import android.view.SurfaceView
-import android.view.View
 
-class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback {
+class GameView : SurfaceView, Runnable {
+    var isPlaying = false
+    var gameThread: Thread? = null
+    var surfaceHolder: SurfaceHolder
+    var paint: Paint
+    var canvas: Canvas? = null
 
-    private var canJump = true
-    private var gameThread: GameThread? = null
-    private var background: Background
-    private var player: Player
-    private val enemy: Enemy = Enemy.getInstance()
+    var player: Player
+    var blocks: MutableList<Enemy> = mutableListOf()
+    var background: Background
 
-    init {
-        holder.addCallback(this)
-        gameThread = GameThread(holder, this)
+    private var enemyTimer: Long = 0L
+    private var lastEnemyTime: Long = 0L
+    constructor(context: Context, width: Int, height: Int) : super(context) {
+        surfaceHolder = holder
+        paint = Paint()
 
-        val screenWidth = resources.displayMetrics.widthPixels
-        val screenHeight = resources.displayMetrics.heightPixels
 
-        // Inicializa o background
-        background = Background(context, screenWidth, screenHeight)
+        player = Player(context, width, height, 100f, 1120f)
+        background = Background(context, width, height)
+    }
 
-        // Inicializa o player
-        player = Player(BitmapFactory.decodeResource(resources, R.drawable.player), 100, -500, enemy)
-
-        isFocusable = true
-
-        isFocusable = true
-        setOnKeyListener { view, keyCode, event ->
-            when (keyCode) {
-                KeyEvent.KEYCODE_SPACE-> {
-                    if (canJump) {
-                        jumpPlayer()
-
-                    }
-                    return@setOnKeyListener true  // Indica que a tecla foi processada
-                }
-                else -> return@setOnKeyListener false
-            }
+    override fun run() {
+        while (isPlaying) {
+            update()
+            draw()
+            control()
         }
-
-    }
-
-
-    override fun surfaceCreated(holder: SurfaceHolder) {
-        gameThread?.start()
-
-    }
-
-    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {}
-
-
-    override fun surfaceDestroyed(holder: SurfaceHolder) {
-        var retry = true
-        while (retry) {
-            try {
-                gameThread?.join()
-                retry = false
-            } catch (e: InterruptedException) {
-                e.printStackTrace()
-            }
-        }
-    }
-
-    override fun draw(canvas: Canvas) {
-        super.draw(canvas)
-        background.draw(canvas)
-        player.draw(canvas)
-        enemy.draw(canvas)
     }
 
     fun update() {
-        player.update(enemy.getEnemies())
-        background.update(0.016f)  // 0.016 segundos (aproximadamente 60 FPS)
-        enemy.update(0.016f)
+        player.update()
+
+        for (block in blocks) {
+            block.update()
+
+            if (player.detectCollision.intersect(block.detectCollision)) {
+                player.shouldBeRemoved = true
+                block.shouldBeRemoved = true
+                // Você pode adicionar aqui a lógica para tratar a colisão entre jogador e inimigo
+            }
+        }
+
+        blocks = blocks.filter { !it.shouldBeRemoved }.toMutableList()
+
+        background.update(0.05f) // 0.017f é um valor de tempo fictício (delta time) para atualização do fundo
+        generateEnemies()
     }
 
-    fun jumpPlayer() {
-        player.jump()
+    private fun generateEnemies() {
+        val currentTime = System.currentTimeMillis()
+
+        // Gera um novo inimigo a cada intervalo aleatório entre 1 e 3 segundos
+        if (currentTime - lastEnemyTime > enemyTimer) {
+            val randomInterval = (1000 * (3 + Math.random() * 2)).toLong() // Intervalo aleatório entre 1 e 3 segundos
+            lastEnemyTime = currentTime
+            enemyTimer = randomInterval
+
+            // Cria um novo inimigo à direita da tela
+            blocks.add(Enemy(context, width, height, 7)) // Ajuste a posição inicial conforme necessário
+        }
+    }
+
+    fun draw() {
+        if (surfaceHolder.surface.isValid) {
+            canvas = surfaceHolder.lockCanvas()
+            canvas?.drawColor(Color.BLACK)
+
+            background.draw(canvas!!)
+
+            for (block in blocks) {
+                if (!block.shouldBeRemoved) {
+                    block.draw(canvas)
+                }
+            }
+
+            player.draw(canvas!!)
+
+            surfaceHolder.unlockCanvasAndPost(canvas)
+        }
+    }
+
+    fun control() {
+        Thread.sleep(17)
     }
 
     fun resume() {
-        gameThread?.setRunning(true)
+        gameThread = Thread(this)
+        gameThread?.start()
+        isPlaying = true
     }
 
     fun pause() {
-        gameThread?.setRunning(false)
+        isPlaying = false
+        gameThread?.join()
+    }
+
+    override fun onTouchEvent(event: MotionEvent?): Boolean {
+        super.onTouchEvent(event)
+        when (event?.action) {
+            MotionEvent.ACTION_DOWN -> {
+                player.jump()
+                return true
+            }
+            MotionEvent.ACTION_UP -> {
+                return true
+            }
+        }
+        return false
     }
 }

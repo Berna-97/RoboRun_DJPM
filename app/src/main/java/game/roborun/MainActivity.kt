@@ -1,17 +1,18 @@
 package game.roborun
 
+import android.graphics.Point
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 
-
 class MainActivity : AppCompatActivity() {
-
-    private lateinit var gameView: GameView
+    lateinit var gameView : GameView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        gameView = GameView(this)
+        val display = windowManager.defaultDisplay
+        val size = Point()
+        display.getSize(size)
+        gameView = GameView(this, size.x, size.y)
         setContentView(gameView)
     }
 
